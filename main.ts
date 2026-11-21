@@ -12,7 +12,8 @@
 // (MAKEFUN_OUTPUT_DIR, or /output when unset) as entry.png, byte for
 // byte, so repeated runs always produce identical output.
 
-import { copyFileSync, mkdirSync, existsSync } from "node:fs";
+import { copyFileSync, mkdirSync, existsSync, readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -28,4 +29,12 @@ mkdirSync(outDir, { recursive: true });
 
 const target = join(outDir, "entry.png");
 copyFileSync(source, target);
+
+// Verify the copy byte for byte: a truncated or corrupted write must
+// fail loudly instead of silently shipping a broken image.
+const digest = (path: string) =>
+  createHash("sha256").update(readFileSync(path)).digest("hex");
+if (digest(source) !== digest(target)) {
+  throw new Error(`entry.png copy mismatch: ${source} != ${target}`);
+}
 console.log(`wrote ${target}`);
